@@ -1,0 +1,161 @@
+import lib/[gettext, gtk3minimal]
+import os, sequtils, strformat, strutils, times, osproc, uri
+
+initGettext("tinycore", "/usr/local/share/locale")
+
+# =============================================================================
+# GLOBALS
+# =============================================================================
+
+var 
+  logicThread: Thread[void]
+  window: GtkWidget
+  status_label: GtkWidget
+  progress_bar: GtkWidget
+  ok_button: GtkWidget
+  fastest_mirror: string
+
+const 
+  mirrorListFile: string = "/usr/local/share/mirrors"
+  downloadFilePath = "/15.x/x86/tcz/info.lst.gz"
+  expectedMd5 = "94679869544f60a9473dd3daf38206f2"
+  timeout = 10
+
+# =============================================================================
+# CALLBACKS
+# =============================================================================
+
+proc on_ok_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
+  try:
+    writeFile("/opt/tcemirror", fastest_mirror)
+    gtk3minimal.quit()
+  except IOError:
+    gtk_label_set_text(status_label, gettext("Error: Could not write to /opt/tcemirror"))
+
+proc on_cancel_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
+  gtk3minimal.quit()
+
+proc on_window_destroy(widget: GtkWidget, data: gpointer) {.cdecl.} =
+  gtk3minimal.quit()
+
+# =============================================================================
+# PROGRAM FUNCTIONS
+# =============================================================================
+
+proc loadMirrors(): seq[string] =
+  if not fileExists(mirrorListFile):
+    discard execShellCmd("tce-load -il mirrors.tcz")
+  if not fileExists(mirrorListFile):
+    discard execShellCmd("tce-load -wil mirrors.tcz")
+  if not fileExists(mirrorListFile):
+    return @[]
+  toSeq(lines(mirrorListFile)).filterIt(it.strip() != "")
+
+proc testMirror(mirror: string): tuple[isValid: bool, timeMs: int64] =
+  let startTime = getTime()
+  let cmd = fmt"busybox wget -qO- --timeout={timeout} {mirror}{downloadFilePath} | busybox md5sum"
+  let (output, exitCode) = execCmdEx(cmd)
+  let endTime = getTime()
+  let duration = (endTime - startTime).inMilliseconds
+  
+  if exitCode == 0:
+    let hash = output.split()[0]  # Get first word (the md5)
+    return (hash == expectedMd5, duration)
+  return (false, 0)
+
+# =============================================================================
+# LOGIC THREAD
+# =============================================================================
+
+proc logicFunction() =
+  {.cast(gcsafe).}:
+    let mirrors = loadMirrors()
+    if mirrors.len < 1:
+      gtk_label_set_text(status_label, gettext("Couldn't load mirror list. Maybe network issue?"))
+      return
+    
+    let translatedText = $gettext("Checking %u mirrors, please wait...")
+    gtk_label_set_text(status_label, (translatedText.replace("%u", $mirrors.len)).cstring)
+    
+    var progress = 0.0
+    let progressStep = 1.0 / mirrors.len.float
+    var fastest_time = high(int64)
+    
+    for mirror in mirrors:
+      gtk_progress_bar_set_text(progress_bar, parseUri(mirror).hostname.cstring)
+      let (isValid, timeMs) = testMirror(mirror)
+      
+      if isValid and timeMs < fastest_time:
+        fastest_time = timeMs
+        fastest_mirror = mirror
+      
+      progress += progressStep
+      gtk_progress_bar_set_fraction(progress_bar, progress)
+    
+    gtk_progress_bar_set_fraction(progress_bar, 100.0)
+    if fastest_mirror != "":
+      let status = fmt"{parseUri(fastest_mirror).hostname} {fastest_time}ms"
+      gtk_progress_bar_set_text(progress_bar, status.cstring)
+      let resultText = $gettext("The fastest mirror was %.*s. Press ok to set it as your mirror.")
+      gtk_label_set_text(status_label, resultText.replace("%.*s", parseUri(fastest_mirror).hostname).cstring)
+      ok_button.gtk_widget_set_sensitive(TRUE)
+    else:
+      gtk_label_set_text(status_label, gettext("No valid mirrors found"))
+
+# =============================================================================
+# GTK3 CORE FUNCTIONS
+# =============================================================================
+
+# Start GTK
+gtk_init()
+
+# Main Window
+window = gtk_window_new(GTK_WINDOW_TOPLEVEL)
+window.gtk_window_set_title(gettext("Mirror picker"))
+window.gtk_window_set_default_size(265, 165)
+window.gtk_window_set_resizable(FALSE)
+window.gtk_window_set_decorated(FALSE)
+
+# Fixed container for absolute positioning
+let fixed = gtk_fixed_new()
+window.gtk_container_add(fixed)
+
+# Progress bar (x:25, y:20, w:215, h:25)
+progress_bar = gtk_progress_bar_new()
+progress_bar.gtk_widget_set_size_request(215, 25)
+progress_bar.gtk_progress_bar_set_show_text(TRUE)
+fixed.gtk_fixed_put(progress_bar, 25, 20)
+
+# Status text (x:25, y:55, w:215, h:45)
+status_label = gtk_label_new(gettext("Loading mirror list"))
+status_label.gtk_label_set_line_wrap(TRUE)
+status_label.gtk_label_set_line_wrap_mode(PANGO_WRAP_WORD)
+status_label.gtk_widget_set_size_request(215, 45)
+status_label.gtk_label_set_justify(GTK_JUSTIFY_CENTER)
+status_label.gtk_widget_set_halign(GTK_ALIGN_CENTER)
+status_label.gtk_widget_set_valign(GTK_ALIGN_START)
+fixed.gtk_fixed_put(status_label, 25, 55)
+
+# OK button (x:30, y:110, w:90, h:35)
+ok_button = gtk_button_new_with_label(gettext("OK"))
+ok_button.gtk_widget_set_size_request(90, 35)
+ok_button.gtk_widget_set_sensitive(FALSE)
+fixed.gtk_fixed_put(ok_button, 30, 110)
+
+# Cancel button (x:145, y:110, w:90, h:35)
+let cancel_button = gtk_button_new_with_label(gettext("Cancel"))
+cancel_button.gtk_widget_set_size_request(90, 35)
+fixed.gtk_fixed_put(cancel_button, 145, 110)
+
+# Connect signals
+window.connect("destroy", on_window_destroy)
+ok_button.connect("clicked", on_ok_clicked)
+cancel_button.connect("clicked", on_cancel_clicked)
+
+# Show the window
+window.show()
+
+# Start logic thread
+createThread(logicThread, logicFunction)
+
+run()
