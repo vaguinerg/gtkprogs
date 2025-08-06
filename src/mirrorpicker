@@ -1,0 +1,105 @@
+#!/bin/sh
+
+export TEXTDOMAIN=tinycore
+export TEXTDOMAINDIR=/usr/local/share/locale
+
+_() {
+    if command -v gettext >/dev/null 2>&1; then
+        gettext "$1"
+    else
+        echo "$1"
+    fi
+}
+
+mirror_file="/usr/local/share/mirrors"
+[ -f "$mirror_file" ] || {
+    yad --error --text="$(_ "Couldn't load mirror list. Maybe network issue?")"
+    exit 1
+}
+
+tmp_fifo="$(mktemp -u)"
+tmp_result="$(mktemp)"
+mkfifo "$tmp_fifo"
+trap 'rm -f "$tmp_fifo" "$tmp_result"; kill $bg_pid 2>/dev/null; exit' INT TERM EXIT
+
+total=$(wc -l < "$mirror_file")
+
+(
+    count=0
+    best_time=999999
+    best_mirror=""
+    
+    echo 0
+    echo "# $(_ "Starting mirror test...")"
+    
+    while IFS= read -r url; do
+        count=$((count + 1))
+        if [ ${#url} -gt 35 ]; then
+            display_url="${url%${url#???????????????????????????????????}}..."
+        else
+            display_url="$url"
+        fi
+        echo "# $display_url ($count/$total)"
+        
+        full_url="${url%/}/15.x/x86/tcz/info.lst.gz"
+        
+        start=$(date +%s)
+        busybox wget -q -O /dev/null --timeout=10 "$full_url"
+        result=$?
+        end=$(date +%s)
+        elapsed=$((end - start))
+        
+        if [ "$result" -eq 0 ]; then
+            if [ "$elapsed" -lt "$best_time" ]; then
+                best_time="$elapsed"
+                best_mirror="$url"
+            fi
+        fi
+        
+        percent=$((count * 100 / total))
+        echo "$percent"
+    done < "$mirror_file"
+    
+    echo "$best_mirror" > "$tmp_result"
+    echo "# DONE"
+    echo "100"
+) > "$tmp_fifo" &
+bg_pid=$!
+
+yad --progress \
+    --title="$(_ "Mirror picker")" \
+    --window-icon=dialog-information \
+    --text="$(printf "$(_ "Checking %u mirrors, please wait...")" "$total")" \
+    --width=265 --height=165 \
+    --fixed \
+    --auto-close \
+    --button="$(_ "Cancel"):1" \
+    --listen < "$tmp_fifo"
+
+if [ $? -eq 1 ]; then
+    exit 1
+fi
+
+best_mirror=$(cat "$tmp_result" 2>/dev/null)
+
+if [ -z "$best_mirror" ]; then
+    yad --error \
+        --title="$(_ "Mirror picker")" \
+        --text="$(_ "No working mirror found!")\\n$(_ "All mirrors failed or timed out.")" \
+        --width=265 --height=165
+    exit 1
+fi
+
+yad --form \
+    --title="$(_ "Mirror picker")" \
+    --window-icon=dialog-information \
+    --text="$(printf "$(_ "The fastest mirror was %s. Press ok to set it as your mirror.")" "$best_mirror")" \
+    --field="$(_ "Mirror"):RO" "$best_mirror" \
+    --width=265 --height=165 \
+    --fixed \
+    --button="$(_ "OK"):0" \
+    --button="$(_ "Cancel"):1" >/dev/null
+
+if [ $? -eq 0 ]; then
+    echo "$best_mirror" > /opt/tcemirror
+fi
