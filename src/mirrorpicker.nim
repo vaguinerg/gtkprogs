@@ -7,6 +7,12 @@ initGettext("tinycore", "/usr/local/share/locale")
 # GLOBALS
 # =============================================================================
 
+const 
+  mirrorListFile: string = "/usr/local/share/mirrors"
+  downloadFileRemotePath = "/15.x/x86/tcz/info.lst.gz"
+  downloadFileMD5 = "94679869544f60a9473dd3daf38206f2"
+  downloadFileTimeout = 10
+
 var 
   logicThread: Thread[void]
   window: GtkWidget
@@ -14,12 +20,6 @@ var
   progress_bar: GtkWidget
   ok_button: GtkWidget
   fastest_mirror: string
-
-const 
-  mirrorListFile: string = "/usr/local/share/mirrors"
-  downloadFilePath = "/15.x/x86/tcz/info.lst.gz"
-  expectedMd5 = "94679869544f60a9473dd3daf38206f2"
-  timeout = 10
 
 # =============================================================================
 # CALLBACKS
@@ -53,14 +53,14 @@ proc loadMirrors(): seq[string] =
 
 proc testMirror(mirror: string): tuple[isValid: bool, timeMs: int64] =
   let startTime = getTime()
-  let cmd = fmt"busybox wget -qO- --timeout={timeout} {mirror}{downloadFilePath} | busybox md5sum"
+  let cmd = fmt"busybox wget -qO- --timeout={downloadFileTimeout} {mirror}{downloadFileRemotePath} | busybox md5sum"
   let (output, exitCode) = execCmdEx(cmd)
   let endTime = getTime()
   let duration = (endTime - startTime).inMilliseconds
   
   if exitCode == 0:
     let hash = output.split()[0]  # Get first word (the md5)
-    return (hash == expectedMd5, duration)
+    return (hash == downloadFileMD5, duration)
   return (false, 0)
 
 # =============================================================================
