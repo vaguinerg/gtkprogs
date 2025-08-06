@@ -1,51 +1,52 @@
 import lib/[gettext, gtk3minimal]
-import os, strutils, osproc, algorithm, sequtils, strformat
+import os, strutils, osproc, sequtils, algorithm
 
 initGettext("tinycore", "/usr/local/share/locale")
 
-# =============================================================================
-# GLOBALS
-# =============================================================================
-
 var
   window: GtkWidget
-  command_entry: GtkWidget
-  command_list: GtkWidget
+  command_combo: GtkWidget
   sudo_check: GtkWidget
 
-# =============================================================================
-# PROGRAM FUNCTIONS
-# =============================================================================
+const HISTORY_FILE = getHomeDir() / ".ash_history"
 
-proc findExecutables(search: string): seq[string] =
-  result = @[]
-  if search.len == 0: return
-  
-  for path in getEnv("PATH").split(':'):
-    if not dirExists(path): continue
-    
-    for kind, file in walkDir(path):
-      if (kind in {pcFile, pcLinkToFile}) and 
-         (search.len == 0 or file.extractFilename.toLowerAscii.contains(search.toLowerAscii)):
-        result.add(file.extractFilename)
-  
-  result.sort(Descending)
-  result = result.deduplicate()
+proc saveCommand(cmd: string) =
+  let entry = "[gtkrun]" & cmd & "\n"
+  let f = open(HISTORY_FILE, fmAppend)
+  try:
+    f.write(entry)
+  finally:
+    f.close()
+
+proc loadHistory(): seq[string] =
+  if not fileExists(HISTORY_FILE): return @[]
+  result = readFile(HISTORY_FILE)
+    .splitLines()
+    .filterIt(it.startsWith("[gtkrun]"))
+    .mapIt(it.replace("[gtkrun]", ""))
+    .deduplicate()
+    .reversed()
+
+proc getCurrentCommand(): string =
+  let entry = gtk_bin_get_child(command_combo)
+  return $gtk_entry_get_text(entry)
+
+proc setCurrentCommand(cmd: string) =
+  let entry = gtk_bin_get_child(command_combo)
+  gtk_entry_set_text(entry, cmd.cstring)
 
 proc executeCommand() =
-  let cmdText = $gtk_entry_get_text(command_entry)  # Convert cstring to string first
-  var cmd = cmdText.strip()
-  if cmd.len == 0: return
+  let cmdText = getCurrentCommand().strip()
+  if cmdText.len == 0: return
   
+  saveCommand(cmdText)  # Save original command
+  
+  var cmd = cmdText
   if gtk_toggle_button_get_active(sudo_check).bool:
     cmd = "sudo " & cmd
     
   discard execCmd(cmd & " 2>/dev/null &")
   gtk3minimal.quit()
-
-# =============================================================================
-# CALLBACKS
-# =============================================================================
 
 proc on_ok_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
   executeCommand()
@@ -54,22 +55,27 @@ proc on_cancel_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
   gtk3minimal.quit()
 
 proc on_browse_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
-  # TODO: Implement file chooser when available in gtk3minimal
-  discard
+  let dialog = gtk_file_chooser_dialog_new(
+    gettext("Choose File"),
+    window,
+    GTK_FILE_CHOOSER_ACTION_OPEN,
+    gettext("Cancel"),
+    GTK_RESPONSE_CANCEL,
+    gettext("Open"),
+    GTK_RESPONSE_ACCEPT)
 
-proc on_entry_changed(widget: GtkWidget, data: gpointer) {.cdecl.} =
-  let search = gtk_entry_get_text(command_entry)
-  gtk_list_store_clear(command_list)
+  let response = gtk_dialog_run(dialog)
+  if response == GTK_RESPONSE_ACCEPT:
+    let filename = gtk_file_chooser_get_filename(dialog)
+    setCurrentCommand($filename)
   
-  for exec in findExecutables($search):
-    gtk_list_store_append(command_list, exec.cstring)
+  dialog.destroy()
 
 proc on_window_destroy(widget: GtkWidget, data: gpointer) {.cdecl.} =
   gtk3minimal.quit()
 
-# =============================================================================
-# GTK3 CORE FUNCTIONS
-# =============================================================================
+proc on_entry_activate(widget: GtkWidget, data: gpointer) {.cdecl.} =
+  executeCommand()
 
 gtk_init()
 
@@ -84,15 +90,19 @@ window.gtk_container_set_border_width(10)
 let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
 window.gtk_container_add(box)
 
-# Entry with completion
-command_entry = gtk_entry_new()
-command_list = gtk_list_store_new()
-let completion = gtk_entry_completion_new()
-gtk_entry_set_completion(command_entry, completion)
-gtk_entry_completion_set_model(completion, command_list)
-gtk_entry_completion_set_text_column(completion, 0)
+# ComboBox with text entry (instead of simple entry)
+command_combo = gtk_combo_box_text_new_with_entry()
+box.gtk_box_pack_start(command_combo, FALSE, FALSE, 0)
 
-box.gtk_box_pack_start(command_entry, FALSE, FALSE, 0)
+# Populate combo box with history
+let history = loadHistory()
+for cmd in history:
+  if cmd.len > 0:
+    gtk_combo_box_text_append_text(command_combo, cmd.cstring)
+
+# Get the entry widget from combo box to connect Enter key
+let combo_entry = gtk_bin_get_child(command_combo)
+combo_entry.connect("activate", on_entry_activate)
 
 # Sudo checkbox
 sudo_check = gtk_check_button_new_with_label(gettext("Run with sudo"))
@@ -103,28 +113,21 @@ let buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10)
 buttons.gtk_widget_set_halign(GTK_ALIGN_CENTER)
 box.gtk_box_pack_end(buttons, FALSE, FALSE, 0)
 
-# OK button
-let ok_button = gtk_button_new_with_label(gettext("OK"))
-ok_button.gtk_widget_set_size_request(90, 35)
+# Buttons (removed history button)
+let 
+  ok_button = gtk_button_new_with_label(gettext("OK"))
+  cancel_button = gtk_button_new_with_label(gettext("Cancel"))
+  browse_button = gtk_button_new_with_label(gettext("Browse"))
 
-# Cancel button
-let cancel_button = gtk_button_new_with_label(gettext("Cancel"))
-cancel_button.gtk_widget_set_size_request(90, 35)
-
-# Browse button
-let browse_button = gtk_button_new_with_label(gettext("Browse"))
-browse_button.gtk_widget_set_size_request(90, 35)
-
-buttons.gtk_box_pack_start(ok_button, FALSE, FALSE, 0)
-buttons.gtk_box_pack_start(cancel_button, FALSE, FALSE, 0)
-buttons.gtk_box_pack_start(browse_button, FALSE, FALSE, 0)
+for btn in [ok_button, cancel_button, browse_button]:
+  btn.gtk_widget_set_size_request(90, 35)
+  buttons.gtk_box_pack_start(btn, FALSE, FALSE, 0)
 
 # Connect signals
 window.connect("destroy", on_window_destroy)
 ok_button.connect("clicked", on_ok_clicked)
 cancel_button.connect("clicked", on_cancel_clicked)
 browse_button.connect("clicked", on_browse_clicked)
-command_entry.connect("changed", on_entry_changed)
 
 window.show()
 run()
