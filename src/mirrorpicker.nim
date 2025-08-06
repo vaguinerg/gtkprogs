@@ -112,40 +112,50 @@ gtk_init()
 # Main Window
 window = gtk_window_new(GTK_WINDOW_TOPLEVEL)
 window.gtk_window_set_title(gettext("Mirror picker"))
-window.gtk_window_set_default_size(265, 165)
+window.gtk_window_set_default_size(300, 150)
 window.gtk_window_set_resizable(FALSE)
+window.gtk_container_set_border_width(10)
 window.gtk_window_set_decorated(FALSE)
 
-# Fixed container for absolute positioning
-let fixed = gtk_fixed_new()
-window.gtk_container_add(fixed)
+# Vertical box como container principal
+let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
+window.gtk_container_add(box)
 
-# Progress bar (x:25, y:20, w:215, h:25)
+# Progress bar
 progress_bar = gtk_progress_bar_new()
-progress_bar.gtk_widget_set_size_request(215, 25)
+progress_bar.gtk_widget_set_size_request(250, 25)
 progress_bar.gtk_progress_bar_set_show_text(TRUE)
-fixed.gtk_fixed_put(progress_bar, 25, 20)
+box.gtk_box_pack_start(progress_bar, FALSE, FALSE, 0)
 
-# Status text (x:25, y:55, w:215, h:45)
+# Status text
 status_label = gtk_label_new(gettext("Loading mirror list"))
 status_label.gtk_label_set_line_wrap(TRUE)
 status_label.gtk_label_set_line_wrap_mode(PANGO_WRAP_WORD)
-status_label.gtk_widget_set_size_request(215, 45)
+status_label.gtk_label_set_max_width_chars(30)  # Limita largura do texto
+status_label.gtk_label_set_width_chars(30)      # Força largura fixa
+status_label.gtk_widget_set_size_request(250, 45)
 status_label.gtk_label_set_justify(GTK_JUSTIFY_CENTER)
 status_label.gtk_widget_set_halign(GTK_ALIGN_CENTER)
 status_label.gtk_widget_set_valign(GTK_ALIGN_START)
-fixed.gtk_fixed_put(status_label, 25, 55)
+box.gtk_box_pack_start(status_label, TRUE, TRUE, 0)
 
-# OK button (x:30, y:110, w:90, h:35)
+# Box para os botões
+let buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10)
+buttons.gtk_widget_set_halign(GTK_ALIGN_CENTER)
+box.gtk_box_pack_end(buttons, FALSE, FALSE, 10)
+
+# OK button
 ok_button = gtk_button_new_with_label(gettext("OK"))
 ok_button.gtk_widget_set_size_request(90, 35)
 ok_button.gtk_widget_set_sensitive(FALSE)
-fixed.gtk_fixed_put(ok_button, 30, 110)
 
-# Cancel button (x:145, y:110, w:90, h:35)
+# Cancel button
 let cancel_button = gtk_button_new_with_label(gettext("Cancel"))
 cancel_button.gtk_widget_set_size_request(90, 35)
-fixed.gtk_fixed_put(cancel_button, 145, 110)
+
+# Adiciona botões na ordem correta
+buttons.gtk_box_pack_start(ok_button, FALSE, FALSE, 0)
+buttons.gtk_box_pack_start(cancel_button, FALSE, FALSE, 10)
 
 # Connect signals
 window.connect("destroy", on_window_destroy)

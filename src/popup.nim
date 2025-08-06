@@ -12,19 +12,26 @@ proc main() =
   
   let window = gtk_window_new(GTK_WINDOW_TOPLEVEL)
   window.gtk_window_set_title(gettext("Message"))
-  window.gtk_container_set_border_width(10)
   window.gtk_window_set_resizable(FALSE)
   window.gtk_window_set_default_size(300, 150)
+  window.gtk_container_set_border_width(10)
   
-  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
+  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)  # spacing 10px
   window.gtk_container_add(box)
   
-  let label = gtk_label_new(message.cstring)
-  label.gtk_label_set_line_wrap(TRUE)
-  box.gtk_box_pack_start(label, TRUE, TRUE, 0)
+  if message.len > 0:
+    let label = gtk_label_new(message.cstring)
+    label.gtk_label_set_line_wrap(TRUE)
+    label.gtk_label_set_justify(GTK_JUSTIFY_CENTER)
+    box.gtk_box_pack_start(label, TRUE, TRUE, 10)
+  
+  let buttonBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)
+  buttonBox.gtk_widget_set_halign(GTK_ALIGN_CENTER)  # Centraliza horizontalmente
+  box.gtk_box_pack_end(buttonBox, FALSE, FALSE, 10)
   
   let button = gtk_button_new_with_label(gettext("Close"))
-  box.gtk_box_pack_start(button, FALSE, FALSE, 0)
+  button.gtk_widget_set_size_request(90, 35)
+  buttonBox.gtk_box_pack_start(button, FALSE, FALSE, 0)
   
   window.connect("destroy", on_close_clicked)
   button.connect("clicked", on_close_clicked)
