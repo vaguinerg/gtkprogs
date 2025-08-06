@@ -155,6 +155,10 @@ proc gtk_widget_set_sensitive*(widget: GtkWidget, sensitive: gboolean) {.cdecl, 
 proc gtk_widget_set_size_request*(widget: GtkWidget, width: gint, height: gint) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_widget_set_halign*(widget: GtkWidget, align: gint) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_widget_set_valign*(widget: GtkWidget, align: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_widget_set_margin_top*(widget: GtkWidget, margin: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_widget_set_margin_bottom*(widget: GtkWidget, margin: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_widget_set_margin_left*(widget: GtkWidget, margin: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_widget_set_margin_right*(widget: GtkWidget, margin: gint) {.cdecl, importc, dynlib: GTK_LIB.}
 
 # =============================================================================
 # WINDOW FUNCTIONS
@@ -182,6 +186,8 @@ proc gtk_container_set_border_width*(container: GtkWidget, border_width: guint) 
 proc gtk_box_new*(orientation: GtkOrientation, spacing: gint): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_box_pack_start*(box: GtkWidget, child: GtkWidget, expand: gboolean, fill: gboolean, padding: guint) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_box_pack_end*(box: GtkWidget, child: GtkWidget, expand: gboolean, fill: gboolean, padding: guint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_box_set_spacing*(box: GtkWidget, spacing: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_box_set_homogeneous*(box: GtkWidget, homogeneous: gboolean) {.cdecl, importc, dynlib: GTK_LIB.}
 
 # Fixed container
 proc gtk_fixed_new*(): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
@@ -194,12 +200,14 @@ proc gtk_fixed_put*(fixed: GtkWidget, widget: GtkWidget, x: gint, y: gint) {.cde
 proc gtk_button_new_with_label*(label: cstring): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_check_button_new_with_label*(label: cstring): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_toggle_button_get_active*(togglebutton: GtkWidget): gboolean {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_toggle_button_set_active*(togglebutton: GtkWidget, is_active: gboolean) {.cdecl, importc, dynlib: GTK_LIB.}
 
 # =============================================================================
 # LABEL FUNCTIONS
 # =============================================================================
 
 proc gtk_label_new*(str: cstring): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_label_get_text*(label: GtkWidget): cstring {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_label_set_text*(label: GtkWidget, str: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_label_set_line_wrap*(label: GtkWidget, wrap: gboolean) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_label_set_line_wrap_mode*(label: GtkWidget, wrap_mode: gint) {.cdecl, importc, dynlib: GTK_LIB.}
@@ -225,6 +233,7 @@ proc gtk_entry_new*(): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_entry_get_text*(entry: GtkWidget): cstring {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_entry_set_text*(entry: GtkWidget, text: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_entry_set_completion*(entry: GtkWidget, completion: GtkWidget) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_set_placeholder_text*(entry: GtkWidget, text: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
 
 # =============================================================================
 # ENTRY COMPLETION FUNCTIONS
@@ -339,3 +348,15 @@ template run*() =
 
 template quit*() =
   gtk_main_quit()
+
+template set_active*(toggle_button: GtkWidget, active: bool) =
+  gtk_toggle_button_set_active(toggle_button, if active: TRUE else: FALSE)
+
+template get_active*(toggle_button: GtkWidget): bool =
+  gtk_toggle_button_get_active(toggle_button).bool
+
+template set_text*(entry: GtkWidget, text: string) =
+  gtk_entry_set_text(entry, text.cstring)
+
+template get_text*(entry: GtkWidget): string =
+  $gtk_entry_get_text(entry)
