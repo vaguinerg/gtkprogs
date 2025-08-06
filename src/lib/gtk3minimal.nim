@@ -139,6 +139,26 @@ proc gtk_progress_bar_set_fraction*(pbar: GtkWidget, fraction: gdouble) {.cdecl,
 proc gtk_progress_bar_set_text*(pbar: GtkWidget, text: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
 proc gtk_progress_bar_set_show_text*(pbar: GtkWidget, show_text: gboolean) {.cdecl, importc, dynlib: GTK_LIB.}
 
+# Entry widget
+proc gtk_entry_new*(): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_get_text*(entry: GtkWidget): cstring {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_set_text*(entry: GtkWidget, text: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_set_completion*(entry: GtkWidget, completion: GtkWidget) {.cdecl, importc, dynlib: GTK_LIB.}
+
+# Entry completion
+proc gtk_entry_completion_new*(): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_completion_set_model*(completion: GtkWidget, model: GtkWidget) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_entry_completion_set_text_column*(completion: GtkWidget, column: gint) {.cdecl, importc, dynlib: GTK_LIB.}
+
+# List store (for completion)
+proc gtk_list_store_new*(): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_list_store_clear*(store: GtkWidget) {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_list_store_append*(store: GtkWidget, text: cstring) {.cdecl, importc, dynlib: GTK_LIB.}
+
+# Check button
+proc gtk_check_button_new_with_label*(label: cstring): GtkWidget {.cdecl, importc, dynlib: GTK_LIB.}
+proc gtk_toggle_button_get_active*(togglebutton: GtkWidget): gboolean {.cdecl, importc, dynlib: GTK_LIB.}
+
 # Signals
 proc g_signal_connect_data*(instance: gpointer, detailed_signal: cstring, 
                            c_handler: pointer, data: gpointer, 

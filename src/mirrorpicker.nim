@@ -9,6 +9,7 @@ initGettext("tinycore", "/usr/local/share/locale")
 
 const 
   mirrorListFile: string = "/usr/local/share/mirrors"
+  mirrorSaveLocation: string = "/opt/tcemirror"
   downloadFileRemotePath = "/15.x/x86/tcz/info.lst.gz"
   downloadFileMD5 = "94679869544f60a9473dd3daf38206f2"
   downloadFileTimeout = 10
@@ -27,7 +28,7 @@ var
 
 proc on_ok_clicked(widget: GtkWidget, data: gpointer) {.cdecl.} =
   try:
-    writeFile("/opt/tcemirror", fastest_mirror)
+    writeFile(mirrorSaveLocation, fastest_mirror)
     gtk3minimal.quit()
   except IOError:
     gtk_label_set_text(status_label, gettext("Error: Could not write to /opt/tcemirror"))
@@ -59,7 +60,7 @@ proc testMirror(mirror: string): tuple[isValid: bool, timeMs: int64] =
   let duration = (endTime - startTime).inMilliseconds
   
   if exitCode == 0:
-    let hash = output.split()[0]  # Get first word (the md5)
+    let hash = output.split()[0]  # Get first hash (md5)
     return (hash == downloadFileMD5, duration)
   return (false, 0)
 
@@ -117,7 +118,7 @@ window.gtk_window_set_resizable(FALSE)
 window.gtk_container_set_border_width(10)
 window.gtk_window_set_decorated(FALSE)
 
-# Vertical box como container principal
+# Vertical box as main container
 let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
 window.gtk_container_add(box)
 
@@ -131,15 +132,15 @@ box.gtk_box_pack_start(progress_bar, FALSE, FALSE, 0)
 status_label = gtk_label_new(gettext("Loading mirror list"))
 status_label.gtk_label_set_line_wrap(TRUE)
 status_label.gtk_label_set_line_wrap_mode(PANGO_WRAP_WORD)
-status_label.gtk_label_set_max_width_chars(30)  # Limita largura do texto
-status_label.gtk_label_set_width_chars(30)      # Força largura fixa
+status_label.gtk_label_set_max_width_chars(30)  # Limit text width
+status_label.gtk_label_set_width_chars(30)      # Force fixed width
 status_label.gtk_widget_set_size_request(250, 45)
 status_label.gtk_label_set_justify(GTK_JUSTIFY_CENTER)
 status_label.gtk_widget_set_halign(GTK_ALIGN_CENTER)
 status_label.gtk_widget_set_valign(GTK_ALIGN_START)
 box.gtk_box_pack_start(status_label, TRUE, TRUE, 0)
 
-# Box para os botões
+# Button box
 let buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10)
 buttons.gtk_widget_set_halign(GTK_ALIGN_CENTER)
 box.gtk_box_pack_end(buttons, FALSE, FALSE, 10)
@@ -153,7 +154,7 @@ ok_button.gtk_widget_set_sensitive(FALSE)
 let cancel_button = gtk_button_new_with_label(gettext("Cancel"))
 cancel_button.gtk_widget_set_size_request(90, 35)
 
-# Adiciona botões na ordem correta
+# Add buttons in correct order
 buttons.gtk_box_pack_start(ok_button, FALSE, FALSE, 0)
 buttons.gtk_box_pack_start(cancel_button, FALSE, FALSE, 10)
 

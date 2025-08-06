@@ -16,7 +16,7 @@ proc main() =
   window.gtk_window_set_default_size(300, 150)
   window.gtk_container_set_border_width(10)
   
-  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)  # spacing 10px
+  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
   window.gtk_container_add(box)
   
   if message.len > 0:
@@ -26,7 +26,7 @@ proc main() =
     box.gtk_box_pack_start(label, TRUE, TRUE, 10)
   
   let buttonBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)
-  buttonBox.gtk_widget_set_halign(GTK_ALIGN_CENTER)  # Centraliza horizontalmente
+  buttonBox.gtk_widget_set_halign(GTK_ALIGN_CENTER)
   box.gtk_box_pack_end(buttonBox, FALSE, FALSE, 10)
   
   let button = gtk_button_new_with_label(gettext("Close"))

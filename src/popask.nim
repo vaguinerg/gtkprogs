@@ -27,7 +27,7 @@ proc main() =
   window.gtk_window_set_default_size(300, 150)
   window.gtk_container_set_border_width(10)
   
-  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)  # spacing 10px
+  let box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10)
   window.gtk_container_add(box)
   
   if message.len > 0:
@@ -37,15 +37,15 @@ proc main() =
     box.gtk_box_pack_start(label, TRUE, TRUE, 10)
   
   let buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10)
-  buttons.gtk_widget_set_halign(GTK_ALIGN_CENTER)  # Centraliza horizontalmente
+  buttons.gtk_widget_set_halign(GTK_ALIGN_CENTER)
   box.gtk_box_pack_end(buttons, FALSE, FALSE, 10)
   
   let no = gtk_button_new_with_label(gettext("No"))
   let yes = gtk_button_new_with_label(gettext("Yes"))
   no.gtk_widget_set_size_request(90, 35)
   yes.gtk_widget_set_size_request(90, 35)
-  buttons.gtk_box_pack_start(yes, FALSE, FALSE, 0)  # Primeiro botão
-  buttons.gtk_box_pack_start(no, FALSE, FALSE, 10)  # Segundo botão com 10px de espaço
+  buttons.gtk_box_pack_start(yes, FALSE, FALSE, 0)
+  buttons.gtk_box_pack_start(no, FALSE, FALSE, 10)
   
   window.connect("destroy", on_destroy)
   no.connect("clicked", on_no_clicked)
