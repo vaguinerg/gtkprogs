@@ -146,39 +146,32 @@ proc g_signal_connect_data*(instance: gpointer, detailed_signal: cstring,
   cdecl, importc, dynlib: GLIB_LIB.}
 
 # =============================================================================
-# FUNÇÕES AUXILIARES
+# HELPER FUNCTIONS
 # =============================================================================
 
 proc g_signal_connect*(instance: gpointer, detailed_signal: cstring, 
                       c_handler: pointer, data: gpointer = nil): culong =
-  ## Conecta um sinal a um callback
   g_signal_connect_data(instance, detailed_signal, c_handler, data, nil, 0)
 
 proc gtk_init*() =
-  ## Inicializa GTK3 sem argumentos
   var argc: cint = 0
   gtk_init(addr argc, nil)
 
 # =============================================================================
-# TEMPLATES ÚTEIS
+# TEMPLATES
 # =============================================================================
 
 template connect*(widget: GtkWidget, signal: string, callback: untyped) =
-  ## Template para conectar sinais de forma mais limpa
   discard g_signal_connect(widget, signal.cstring, cast[pointer](callback))
 
 template show*(widget: GtkWidget) =
-  ## Template para mostrar widget
   gtk_widget_show_all(widget)
 
 template destroy*(widget: GtkWidget) =
-  ## Template para destruir widget
   gtk_widget_destroy(widget)
 
 template run*() =
-  ## Template para iniciar o loop principal
   gtk_main()
 
 template quit*() =
-  ## Template para sair do loop principal
   gtk_main_quit()
